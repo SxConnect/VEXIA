@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: dve-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dve_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
+      POSTGRES_DB: data_validation_engine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dve-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dve_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dve-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://dve_user:${DB_PASSWORD:-change_me_in_production}@postgres:5432/data_validation_engine?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      PAPI_API_TOKEN: ${PAPI_API_TOKEN}
+      PAPI_INSTANCE_ID: ${PAPI_INSTANCE_ID}
+      PAPI_API_URL: ${PAPI_API_URL:-https://api.papi.com.br}
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_URL: ${APP_URL:-https://yourdomain.com}
+    networks:
+      - dve-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dve.rule=Host(`${DOMAIN:-yourdomain.com}`)"
+      - "traefik.http.routers.dve.entrypoints=websecure"
+      - "traefik.http.routers.dve.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dve.loadbalancer.server.port=3000"
+
+  traefik:
+    image: traefik:v2.10
+    container_name: dve-traefik
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@yourdomain.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "traefik_certs:/letsencrypt"
+    networks:
+      - dve-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN:-yourdomain.com}`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)"
+      - "traefik.http.routers.http-catchall.entrypoints=web"
+      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
+
+volumes:
+  postgres_data:
+  traefik_certs:
+
+networks:
+  dve-network:
+    driver: bridge

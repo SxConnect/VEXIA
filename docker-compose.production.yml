@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  vexia-postgres:
+    image: postgres:15-alpine
+    container_name: vexia-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: vexia
+      POSTGRES_USER: vexia_user
+      POSTGRES_PASSWORD: VxX9mK2nP8qR4vW7sT3jH6bN5cF1dG0x
+    volumes:
+      - vexia_postgres_data:/var/lib/postgresql/data
+    networks:
+      - portainer_default
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vexia_user -d vexia"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # VEXIA Application
+  vexia-app:
+    image: ghcr.io/sxconnect/vexia:latest
+    container_name: vexia-app
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://vexia_user:VxX9mK2nP8qR4vW7sT3jH6bN5cF1dG0x@vexia-postgres:5432/vexia?schema=public
+      JWT_SECRET: vexia-super-secret-jwt-key-2024-production
+      PAPI_API_URL: https://papi.sxconnect.com.br
+      PAPI_INSTANCE_ID: sxconnect
+      PAPI_API_KEY: CB5EE96DC069FA8ECBD26421D458E567
+      NEXT_PUBLIC_APP_URL: https://vexia.sxconnect.com.br
+    depends_on:
+      vexia-postgres:
+        condition: service_healthy
+    networks:
+      - portainer_default
+    volumes:
+      - vexia_uploads:/app/public/uploads
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vexia.rule=Host(`vexia.sxconnect.com.br`)"
+      - "traefik.http.routers.vexia.entrypoints=websecure"
+      - "traefik.http.routers.vexia.tls.certresolver=leresolver"
+      - "traefik.http.services.vexia.loadbalancer.server.port=3000"
+
+volumes:
+  vexia_postgres_data:
+  vexia_uploads:
+
+networks:
+  portainer_default:
+    external: true

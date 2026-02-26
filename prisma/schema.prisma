@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  users          User[]
+  questionarios  Questionario[]
+
+  @@map("tenants")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  nome      String
+  whatsapp  String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  loginCodes LoginCode[]
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+model LoginCode {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  codeHash   String   @map("code_hash")
+  expiresAt  DateTime @map("expires_at")
+  used       Boolean  @default(false)
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  ipAddress  String?  @map("ip_address")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("login_codes")
+}
+
+model Questionario {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  titulo    String
+  descricao String?
+  imagemUrl String?  @map("imagem_url")
+  status    String   @default("ativo")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  perguntas    Pergunta[]
+  respondentes Respondente[]
+
+  @@index([tenantId])
+  @@map("questionarios")
+}
+
+model Pergunta {
+  id              String   @id @default(uuid())
+  questionarioId  String   @map("questionario_id")
+  texto           String
+  contexto        String?
+  tipo            String
+  obrigatoria     Boolean  @default(true)
+  permitirOutro   Boolean  @default(false) @map("permitir_outro")
+  ordem           Int
+  ativa           Boolean  @default(true)
+  
+  // Lógica condicional
+  campoCondicional     Boolean  @default(false) @map("campo_condicional")
+  condicaoOpcoes       String?  @map("condicao_opcoes") // IDs das opções que ativam o campo, separados por vírgula
+  campoCondicionalTexto String? @map("campo_condicional_texto") // Texto do label do campo condicional
+  campoObrigatorio     Boolean  @default(false) @map("campo_obrigatorio") // Se o campo condicional é obrigatório
+  
+  questionario Questionario @relation(fields: [questionarioId], references: [id], onDelete: Cascade)
+  opcoes       Opcao[]
+  respostas    Resposta[]
+
+  @@index([questionarioId])
+  @@map("perguntas")
+}
+
+model Opcao {
+  id         String @id @default(uuid())
+  perguntaId String @map("pergunta_id")
+  texto      String
+  ordem      Int
+  
+  pergunta Pergunta @relation(fields: [perguntaId], references: [id], onDelete: Cascade)
+
+  @@index([perguntaId])
+  @@map("opcoes")
+}
+
+model Respondente {
+  id             String    @id @default(uuid())
+  questionarioId String    @map("questionario_id")
+  nome           String
+  whatsapp       String
+  tipoEmpresa    String?   @map("tipo_empresa")
+  dataInicio     DateTime  @default(now()) @map("data_inicio")
+  dataFinal      DateTime? @map("data_final")
+  
+  questionario Questionario @relation(fields: [questionarioId], references: [id], onDelete: Cascade)
+  respostas    Resposta[]
+
+  @@index([questionarioId])
+  @@map("respondentes")
+}
+
+model Resposta {
+  id             String   @id @default(uuid())
+  respondenteId  String   @map("respondente_id")
+  perguntaId     String   @map("pergunta_id")
+  resposta       String?
+  respostaTexto  String?  @map("resposta_texto")
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  respondente Respondente @relation(fields: [respondenteId], references: [id], onDelete: Cascade)
+  pergunta    Pergunta    @relation(fields: [perguntaId], references: [id], onDelete: Cascade)
+
+  @@index([respondenteId])
+  @@index([perguntaId])
+  @@map("respostas")
+}
