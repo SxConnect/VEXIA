@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
             const dadosResposta = {
                 respondenteId: respondente.id,
                 perguntaId: resposta.perguntaId,
-                resposta: resposta.resposta || null,
-                respostaTexto: resposta.respostaTexto || null,
+                resposta: resposta.resposta || undefined,
+                respostaTexto: resposta.respostaTexto || undefined,
             }
 
             console.log('💾 Salvando resposta:', JSON.stringify(dadosResposta, null, 2))
