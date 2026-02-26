@@ -30,7 +30,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN apk add --no-cache openssl netcat-openbsd && \
+RUN apk add --no-cache openssl netcat-openbsd su-exec && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs && \
     mkdir -p /app/public/uploads && \
@@ -48,14 +48,14 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-USER nextjs
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
+    chown nextjs:nodejs /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+# Run entrypoint as root, then switch to nextjs user
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server.js"]

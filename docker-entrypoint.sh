@@ -12,5 +12,16 @@ done
 
 echo "✅ Database is ready!"
 
-# Execute the main command
-exec "$@"
+# Run migrations using the Prisma binary from the build
+echo "🔄 Running database migrations..."
+cd /app
+if [ -f "node_modules/.bin/prisma" ]; then
+  node_modules/.bin/prisma migrate deploy || echo "⚠️ Migrations failed or already applied"
+else
+  echo "⚠️ Prisma CLI not found, skipping migrations"
+fi
+
+echo "✅ Starting application..."
+
+# Switch to nextjs user and execute the main command
+exec su-exec nextjs "$@"
