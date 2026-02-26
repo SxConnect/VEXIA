@@ -36,13 +36,15 @@ RUN apk add --no-cache openssl && \
     mkdir -p /app/public/uploads && \
     chown -R nextjs:nodejs /app/public/uploads
 
-# Copy necessary files
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
+# Copy necessary files from standalone build
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/next.config.js ./next.config.js
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/.bin ./node_modules/.bin
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
@@ -56,4 +58,4 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
