@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: vexia
       POSTGRES_USER: vexia_user
-      POSTGRES_PASSWORD: VxX9mK2nP8qR4vW7sT3jH6bN5cF1dG0x
+      POSTGRES_PASSWORD: VxX9mK2nP8qR4vsT3jH6bN5cF1dG0x
     volumes:
       - vexia_postgres_data:/var/lib/postgresql/data
     networks:
@@ -28,7 +28,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgresql://vexia_user:VxX9mK2nP8qR4vW7sT3jH6bN5cF1dG0x@vexia-postgres:5432/vexia?schema=public
+      DATABASE_URL: postgresql://vexia_user:VxX9mK2nP8qR4vsT3jH6bN5cF1dG0x@vexia-postgres:5432/vexia?schema=public
       JWT_SECRET: vexia-super-secret-jwt-key-2024-production
       PAPI_API_URL: https://papi.sxconnect.com.br
       PAPI_INSTANCE_ID: sxconnect
